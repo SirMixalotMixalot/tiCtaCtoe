@@ -7,8 +7,8 @@
 //#define TESTING_COL
 #include "console.h"
 //TODO: Add error checking
-//TODO: check for winner!
-//TODO: add propmt when there is a winner
+//DONE: check for winner! ✔
+//EHH: add propmt when there is a winner 〰
 const u8 SPRITE_WIDTH = 15;
 const u8 SPRITE_HEIGHT = 8;
 
@@ -118,8 +118,7 @@ void show_winner(Game* g) {
     }
     char text[] = "There is a winner!\n";
     
-    char w = 'O';
-    if(p == X) {w = 'X';}
+
     //sprintf_s(text,50,w);
     if(g->plays == 9 && g->win == 0) {
         write_styled_and_coloured_text("Stalemate!\n", (ConsoleColour) {.fg=Yellow,.bg=DefaultBackground}, Bold);
@@ -220,9 +219,6 @@ void show_board(Game* g) {
     puts(top_row_line);
     
 
-}
-u8 out_of_bounds(ConsolePoint p1, ConsolePoint p2, u64 XLIMIT, u64 YLIMIT) {
-    return (p1.x + p2.x > XLIMIT || p1.y + p2.y > YLIMIT);
 }
 Game default_game() {
     Game g = {
