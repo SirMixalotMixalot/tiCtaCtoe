@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include "console.h"
 
+#define ESC L"\x1b"
 
 struct {
     HANDLE h_out;
@@ -113,8 +114,11 @@ void clear_screen() {
     wprintf(L"\x1b[2J");
 }
 void set_window_title(const wchar_t* title) {
-    wprintf(L"\x1b]2;%s\x07",title);
+    wprintf(L"\x1b]2;%ls\x07",title);
 }
-void write_text(const char* text) {
+void write_text(const wchar_t* text) {
     write_styled_and_coloured_text(text,default_console_colour(),NoStyle);
+}
+void revert_console_attributes() {
+    wprintf(L"\x1b[!p");
 }

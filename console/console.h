@@ -67,7 +67,8 @@ void save_cursor_position();
 void restore_cursor_last_saved_position();
 void scroll_up(u8 n);
 void clear_screen();
-void set_window_title(const char* title);
+void set_window_title(const wchar_t* title);
 void scroll_down(u8 n);
-void write_text(const char* t);
+void write_text(const wchar_t* t);
+void revert_console_attributes();
 #endif // CONSOLE_LIB

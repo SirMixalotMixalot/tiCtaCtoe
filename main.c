@@ -4,8 +4,8 @@
 #include <stdbool.h>
 #include <string.h>
 //DONE: use winapi to draw coloured text! ✔
-//#define TESTING_COL
-#include "console.h"
+
+#include "console/console.h"
 //TODO: Add error checking
 //DONE: check for winner! ✔
 //EHH: add propmt when there is a winner 〰
@@ -68,6 +68,7 @@ const char* O_S[] = {
     "    ------    "
 };
 const char** PLAYERS[] = {O_S,X_S};
+const char PlayerAsChar[] = {'O','X'};
 const ConsoleColourBasic PlayerColours[] = {Blue,Red};
 const u16 win_states[] = {
     7        ,// 0 0000 0111
@@ -110,25 +111,35 @@ ConsolePoint dir_to_point(ConsoleDirection dir) {
             return (ConsolePoint) {.x=0,.y=0};
     }
 }
+void clean_up() {
+    clear_screen();
+    revert_console_attributes();
+
+}
 void show_board(Game* g);
 void show_winner(Game* g) {
     Player p = g->current_player;
     if(p == None) {
-        return;
+        return; // shouldn't happen but you never know
     }
-    char text[] = "There is a winner!\n";
+    char text[20];
+
+    char w = PlayerAsChar[g->current_player];
+
+    snprintf(text,20,"%c is the winner!\n",w);
+
     
 
     //sprintf_s(text,50,w);
     if(g->plays == 9 && g->win == 0) {
-        write_styled_and_coloured_text("Stalemate!\n", (ConsoleColour) {.fg=Yellow,.bg=DefaultBackground}, Bold);
+        write_styled_and_coloured_text(L"Stalemate!\n", (ConsoleColour) {.fg=Yellow,.bg=DefaultBackground}, Bold);
     }else {
         write_styled_and_coloured_text(text,(ConsoleColour) {.fg=Green,.bg=DefaultBackground},Bold);
     }
     fflush(stdout);
     
     show_board(g);
-    write_text("Press Ctrl-C to end!\n");
+    write_text("Press q to quit!\n");
     
 
 }
@@ -187,14 +198,14 @@ void show_board(Game* g) {
     for(int row = 0; row < BOARD_HEIGHT; row++) {
         printf(top_row_line);
 
-        for(int sl = 0; sl < SPRITE_HEIGHT; sl++) {
+        for(int sprite_line = 0; sprite_line < SPRITE_HEIGHT; sprite_line++) {
             for(int col = 0; col < BOARD_WIDTH; col++) {
                 printf("|");
                 ConsoleColour colour = default_console_colour();
-                char* s = nothing;
+                char const* s = nothing;
                 i8 cell = g->board[row * BOARD_WIDTH + col];
                 if (cell != None) {
-                    s = PLAYERS[cell][sl];
+                    s = PLAYERS[cell][sprite_line];
                     colour.fg = PlayerColours[cell];
                 }
                 if(g->done && 1 << (row * BOARD_WIDTH + col) & g->win) {
@@ -202,7 +213,7 @@ void show_board(Game* g) {
                 }else if(g->selected.x == col && g->selected.y == row) {
                     colour.bg = BGWhite;
                     if(cell == None) {
-                        s = PLAYERS[(int)g->current_player][sl];
+                        s = PLAYERS[(int)g->current_player][sprite_line];
                         colour.fg = PlayerColours[g->current_player];
                     }
 
@@ -236,13 +247,13 @@ Game default_game() {
     return g;
     
 }
-#ifndef TESTING_COL
+
 int main() {
     prepare_console(ENABLE_VIRTUAL_TERMINAL_PROCESSING,ENABLE_WINDOW_INPUT);
     
     Game tiktok = default_game();
     set_window_title(L"tictactoe");
-    
+    hide_cursor();
     while(true) {
         EventList e = get_event_list();
         for(int i = 0; i < e.length; i++) {
@@ -252,14 +263,17 @@ int main() {
             case KEY_EVENT:
                 KEY_EVENT_RECORD kevent = current_event.Event.KeyEvent;
                 if(kevent.bKeyDown) {
-                    if(kevent.wVirtualKeyCode != VK_RETURN){
+                    if(kevent.wVirtualKeyCode != 'Q' && kevent.wVirtualKeyCode != VK_RETURN){
                         ConsoleDirection dir = char_to_direction(kevent.wVirtualKeyCode);
                         ConsolePoint p = dir_to_point(dir);
                         tiktok.selected.x = (tiktok.selected.x + p.x) % BOARD_WIDTH;
                         tiktok.selected.y = (tiktok.selected.y + p.y) % BOARD_HEIGHT;
 
-                    }else {
+                    }else if(kevent.wVirtualKeyCode == VK_RETURN) {
                         tiktok = make_move(tiktok,tiktok.selected);
+                    }else {
+                        clean_up();
+                        exit(0);
                     }
 
                 }
@@ -276,59 +290,7 @@ int main() {
         }
         move_cursor(UP,MAP_HEIGHT + 7);
     }
-    //show_winner(1 - tiktok.current_player);
+    
 }
 
-#endif
-#ifdef TESTING_COL
-    
 
-    const char* dir_to_str(ConsoleDirection d) {
-        switch (d)
-        {
-        case UP:
-            return "UP";
-        case DOWN:
-            return "DOWN";
-        case LEFT:
-            return "LEFT";
-        case RIGHT:
-            return "RIGHT";
-        default:
-            return "INVALID DIRECTION";
-        }
-    }
-    int main() {
-        int error = prepare_console();
-        if(error != 0) {
-            printf("Unable to prepare console");
-        }
-        ConsoleColour col = {.fg = Red};
-        STYLE s = Bold;
-        write_styled_text(L"Hello World\n",s);
-        //fflush(stdout);
-        while(true) {
-            EventList ev = get_event_list();
-            //printf("Reading event list...");
-            for(int i = 0; i < ev.length; i++) {
-                INPUT_RECORD event = ev.inputRecord[i];
-                switch (event.EventType)
-                {
-                case KEY_EVENT:
-                    if(event.Event.KeyEvent.bKeyDown) {
-                      move_cursor(
-                          char_to_direction(event.Event.KeyEvent.wVirtualKeyCode),
-                          1
-                      );
-                    }
-                    break;
-                
-                default:
-                    break;
-                }
-            }
-      }
-    }
-
-    
-#endif
