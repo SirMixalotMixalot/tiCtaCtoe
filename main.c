@@ -6,6 +6,7 @@
 //DONE: use winapi to draw coloured text! ✔
 
 #include "console/console.h"
+#include <windows.h>
 //TODO: Add error checking
 //DONE: check for winner! ✔
 //EHH: add propmt when there is a winner 〰
@@ -16,6 +17,8 @@ const u8 BOARD_WIDTH = 3;
 const u8 BOARD_HEIGHT = 3;
 
 const u8 MAP_HEIGHT = 3 * 8;
+
+
 
 typedef enum {
     X = 1,
@@ -44,6 +47,7 @@ typedef struct {
 
 
 } Game;
+Game make_move(Game g, ConsolePoint p);
 
 const char* top_row_line = "  --------------""---------------""--------------" "\n";
 const char * nothing = "              ";
@@ -67,6 +71,7 @@ const char* O_S[] = {
     "  \\        /  ",
     "    ------    "
 };
+
 const char** PLAYERS[] = {O_S,X_S};
 const char PlayerAsChar[] = {'O','X'};
 const ConsoleColourBasic PlayerColours[] = {Blue,Red};
@@ -124,7 +129,7 @@ void show_winner(Game* g) {
     }
     char text[20];
 
-    char w = PlayerAsChar[g->current_player];
+    char w = PlayerAsChar[1 - g->current_player];
 
     snprintf(text,20,"%c is the winner!\n",w);
 
@@ -139,16 +144,91 @@ void show_winner(Game* g) {
     fflush(stdout);
     
     show_board(g);
-    write_text("Press q to quit!\n");
+    write_text(L"Press q to quit!\n");
     
 
 }
+//using the max and min macros would reavaluate minmax twice which is unnecessary
+int max_(int a, int b) {
+    return (a >= b) * a + b * (b > a);
+}
+int min_(int a, int b) {
+    return (a <= b) * a + b * (b < a);
+}
+const uint32_t DEPTH_LIMIT = 1000;
+int minmax(Game g, uint32_t depth) {
+    if(g.win) {
+        //printf("From where I'm standing, looks like %c is the winner\n",PlayerAsChar[1 - g.current_player]);
+      
+        if(g.current_player == X) {
+            return -10;
+        }else {
+            return 10;
+        }
+    }else if(g.plays >= 9) {
+        //printf("From where I'm standing, looks like it's a stalemate\n");
+        return 0;
+    }
+    int best;
+    if(g.current_player == X) {
+        //printf("Maximising!\n");
+        best = -100;
+        for(int row = 0; row < BOARD_HEIGHT; row++) {
+            for(int col = 0; col < BOARD_WIDTH; col++) {
+                if((g.board[row * BOARD_WIDTH + col] != None) ){ continue; }
+                best = max_(best,
+                           minmax(make_move(g, (ConsolePoint){.x=col,.y=row}), depth + 1));
+            }
+        }
+        
+    }else {
+        //printf("Minimising!\n");
+        best = 100;
+        for(int row = 0; row < BOARD_HEIGHT; row++) {
+            for(int col = 0; col < BOARD_WIDTH; col++) {
+                if((g.board[row * BOARD_HEIGHT + col] != None) ){ continue; }
+                best = min_(best,
+                             minmax(make_move(g, (ConsolePoint){.x=col,.y=row}), depth + 1));
+            }
+        }
+        
+    }
+    return best;
 
+}
+
+ConsolePoint next_move(Game g) {
+    int best = -1000;
+    ConsolePoint best_move = {.x = 0, .y = 0};
+    for(int row = 0; row < BOARD_HEIGHT; row++) {
+        for(int col = 0; col < BOARD_WIDTH; col++) {
+            if (g.board[row * BOARD_WIDTH + col] != None) { continue; }
+            ConsolePoint p = {.x = col, .y = row};
+            Game new_state = make_move(g, p);
+
+            int move = minmax(new_state, 0);
+
+            if(move > best) {
+                //printf("Current best move is : %d\n", move);
+                best = move;
+                best_move = p;
+
+            }
+
+        }
+    }
+
+    return best_move;
+
+
+    
+
+}
 u16 check_winner(Game* g) {
     
     u16 winner = 0;      
     for(int i = 0; i < 8; i++) {
-        winner |= (win_states[i] & g->board_state[g->current_player]) == win_states[i];
+        winner = (win_states[i] & g->board_state[g->current_player]) == win_states[i];
         if(winner != 0) {
             return win_states[i];
         }
@@ -159,7 +239,7 @@ u16 check_winner(Game* g) {
 ConsolePoint get_user_point() {
     puts("Please enter the row and column coordinates of where you want to play? (1 <= row <=3) and (1 <= col <= 3)");
     u8 row,col;
-    scanf("%hhd,%hhd",&row,&col);
+    scanf_s("%hhd,%hhd",&row,&col);
     return (ConsolePoint) {.x= col-1,.y=row-1};
 }
 Game make_move(Game g, ConsolePoint p) {
@@ -179,9 +259,6 @@ Game make_move(Game g, ConsolePoint p) {
     g.win = check_winner(&g);
     g.done = g.win != 0 || g.plays == 9;
 
-    if(g.done) {
-        show_winner(&g);
-    }
     g.current_player ^= 1;
     g.last_valid_move = p;
 
@@ -247,6 +324,7 @@ Game default_game() {
     return g;
     
 }
+//X is ai, O is human
 
 int main() {
     prepare_console(ENABLE_VIRTUAL_TERMINAL_PROCESSING,ENABLE_WINDOW_INPUT);
@@ -255,37 +333,50 @@ int main() {
     set_window_title(L"tictactoe");
     hide_cursor();
     while(true) {
-        EventList e = get_event_list();
-        for(int i = 0; i < e.length; i++) {
-            INPUT_RECORD current_event = e.inputRecord[i];
-            switch (current_event.EventType)
-            {
-            case KEY_EVENT:
-                KEY_EVENT_RECORD kevent = current_event.Event.KeyEvent;
-                if(kevent.bKeyDown) {
-                    if(kevent.wVirtualKeyCode != 'Q' && kevent.wVirtualKeyCode != VK_RETURN){
-                        ConsoleDirection dir = char_to_direction(kevent.wVirtualKeyCode);
-                        ConsolePoint p = dir_to_point(dir);
-                        tiktok.selected.x = (tiktok.selected.x + p.x) % BOARD_WIDTH;
-                        tiktok.selected.y = (tiktok.selected.y + p.y) % BOARD_HEIGHT;
+        if(tiktok.current_player == X) {
+            ConsolePoint ai_move = next_move(tiktok);
+            tiktok = make_move(tiktok,ai_move);
 
-                    }else if(kevent.wVirtualKeyCode == VK_RETURN) {
-                        tiktok = make_move(tiktok,tiktok.selected);
-                    }else {
-                        clean_up();
-                        exit(0);
-                    }
-
-                }
-                break;
             
-            default:
+        }else{ 
+            EventList e = get_event_list();
+            for(int i = 0; i < e.length; i++) {
+                INPUT_RECORD current_event = e.inputRecord[i];
+                switch (current_event.EventType)
+                {
+                case KEY_EVENT:
+                    KEY_EVENT_RECORD kevent = current_event.Event.KeyEvent;
+                    if(kevent.bKeyDown) {
+                        if(kevent.wVirtualKeyCode != 'Q' && kevent.wVirtualKeyCode != VK_RETURN){
+                            ConsoleDirection dir = char_to_direction(kevent.wVirtualKeyCode);
+                            ConsolePoint p = dir_to_point(dir);
+                            tiktok.selected.x = (tiktok.selected.x + p.x) % BOARD_WIDTH;
+                            tiktok.selected.y = (tiktok.selected.y + p.y) % BOARD_HEIGHT;
+                            
 
-                break;
+                        }else if(kevent.wVirtualKeyCode == VK_RETURN) {
+                            tiktok = make_move(tiktok,tiktok.selected);
+                            
+                        }else {
+                            clean_up();
+                            exit(0);
+                        }
+
+                    }
+                    break;
+                
+                default:
+
+                    break;
+                }
             }
         }
+        
         show_board(&tiktok);
         if(tiktok.done) {
+            if(tiktok.win) {
+                show_winner(&tiktok);
+            }
             tiktok = default_game();
         }
         move_cursor(UP,MAP_HEIGHT + 7);
