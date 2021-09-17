@@ -47,6 +47,7 @@ typedef struct {
 
 
 } Game;
+
 Game make_move(Game g, ConsolePoint p);
 
 const char* top_row_line = "  --------------""---------------""--------------" "\n";
@@ -122,7 +123,7 @@ void clean_up() {
 
 }
 void show_board(Game* g);
-void show_winner(Game* g) {
+void show_winner_or_stalemate(Game* g) {
     Player p = g->current_player;
     if(p == None) {
         return; // shouldn't happen but you never know
@@ -144,11 +145,10 @@ void show_winner(Game* g) {
     fflush(stdout);
     
     show_board(g);
-    write_text(L"Press q to quit!\n");
+    wprintf(L"Press q to quit!\n");
     
 
 }
-//using the max and min macros would reavaluate minmax twice which is unnecessary
 int max_(int a, int b) {
     return (a >= b) * a + b * (b > a);
 }
@@ -156,57 +156,62 @@ int min_(int a, int b) {
     return (a <= b) * a + b * (b < a);
 }
 const uint32_t DEPTH_LIMIT = 1000;
-int minmax(Game g, uint32_t depth) {
+
+typedef int (*Comparer)(int,int);
+
+const Comparer PLAYER_TYPE[2] = {min_,max_};
+const int PLAYER_INITIAL_BEST[] = {2,-2};
+
+
+int minmax(Game g,int best, Comparer f,  uint32_t depth, int trackers[2]) {
     if(g.win) {
         //printf("From where I'm standing, looks like %c is the winner\n",PlayerAsChar[1 - g.current_player]);
       
         if(g.current_player == X) {
-            return -10;
+            return -1;
         }else {
-            return 10;
+            return 1;
         }
     }else if(g.plays >= 9) {
         //printf("From where I'm standing, looks like it's a stalemate\n");
         return 0;
     }
-    int best;
-    if(g.current_player == X) {
-        //printf("Maximising!\n");
-        best = -100;
-        for(int row = 0; row < BOARD_HEIGHT; row++) {
-            for(int col = 0; col < BOARD_WIDTH; col++) {
-                if((g.board[row * BOARD_WIDTH + col] != None) ){ continue; }
-                best = max_(best,
-                           minmax(make_move(g, (ConsolePoint){.x=col,.y=row}), depth + 1));
+    
+
+    for(int row = 0; row < BOARD_HEIGHT; row++) {
+        for(int col = 0; col < BOARD_WIDTH; col++) {
+            if((g.board[row * BOARD_WIDTH + col] != None) ){ continue; }
+            const Game new_state = make_move(g, (ConsolePoint){.x=col,.y=row});
+
+            int m = minmax(
+                new_state,
+                PLAYER_INITIAL_BEST[new_state.current_player],
+                PLAYER_TYPE[new_state.current_player],
+                depth + 1,
+                trackers);
+            best = f(best,m);
+            trackers[new_state.current_player] = f(trackers[new_state.current_player],m);
+            if(trackers[0] <= trackers[1]) { // beta <= alpha
+                return best;
             }
+            
         }
-        
-    }else {
-        //printf("Minimising!\n");
-        best = 100;
-        for(int row = 0; row < BOARD_HEIGHT; row++) {
-            for(int col = 0; col < BOARD_WIDTH; col++) {
-                if((g.board[row * BOARD_HEIGHT + col] != None) ){ continue; }
-                best = min_(best,
-                             minmax(make_move(g, (ConsolePoint){.x=col,.y=row}), depth + 1));
-            }
-        }
-        
     }
     return best;
+
 
 }
 
 ConsolePoint next_move(Game g) {
-    int best = -1000;
+    int best = -2;
     ConsolePoint best_move = {.x = 0, .y = 0};
     for(int row = 0; row < BOARD_HEIGHT; row++) {
         for(int col = 0; col < BOARD_WIDTH; col++) {
             if (g.board[row * BOARD_WIDTH + col] != None) { continue; }
             ConsolePoint p = {.x = col, .y = row};
             Game new_state = make_move(g, p);
-
-            int move = minmax(new_state, 0);
+                                                        // {alpha, beta}
+            int move = minmax(new_state,2,min_, 0,(int[2]){2,-2});
 
             if(move > best) {
                 //printf("Current best move is : %d\n", move);
@@ -374,9 +379,8 @@ int main() {
         
         show_board(&tiktok);
         if(tiktok.done) {
-            if(tiktok.win) {
-                show_winner(&tiktok);
-            }
+            show_winner_or_stalemate(&tiktok);
+            
             tiktok = default_game();
         }
         move_cursor(UP,MAP_HEIGHT + 7);
