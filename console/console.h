@@ -21,8 +21,8 @@ typedef enum {
 
 }STYLE;
 typedef struct {
-    u64 x;
-    u64 y;
+    i64 x;
+    i64 y;
 } ConsolePoint;
 typedef enum {
     UP,

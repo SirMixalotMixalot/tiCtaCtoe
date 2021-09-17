@@ -355,9 +355,14 @@ int main() {
                         if(kevent.wVirtualKeyCode != 'Q' && kevent.wVirtualKeyCode != VK_RETURN){
                             ConsoleDirection dir = char_to_direction(kevent.wVirtualKeyCode);
                             ConsolePoint p = dir_to_point(dir);
-                            tiktok.selected.x = (tiktok.selected.x + p.x) % BOARD_WIDTH;
-                            tiktok.selected.y = (tiktok.selected.y + p.y) % BOARD_HEIGHT;
-                            
+                            tiktok.selected.x = (tiktok.selected.x + p.x) % (i8)BOARD_WIDTH;
+                            tiktok.selected.y = (tiktok.selected.y + p.y) % (i8)BOARD_HEIGHT;
+                            if(tiktok.selected.x < 0 || tiktok.selected.x >= 3) { // i have no idea why i have to do these checks
+                                tiktok.selected.x = 2;
+                            }
+                            if(tiktok.selected.y < 0 || tiktok.selected.y >= 3) {
+                                tiktok.selected.y = 2;
+                            }
 
                         }else if(kevent.wVirtualKeyCode == VK_RETURN) {
                             tiktok = make_move(tiktok,tiktok.selected);
