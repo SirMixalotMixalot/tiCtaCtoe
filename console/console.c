@@ -27,7 +27,7 @@ HANDLE prepare_std_handle(DWORD handletype, ULONG flags) {
 
     return h;
 }
-int prepare_console(unsigned short oflags, unsigned short iflags) {
+int prepare_console(uint64_t oflags, uint32_t iflags) {
     console.h_out = prepare_std_handle(STD_OUTPUT_HANDLE, oflags);
     console.h_in = prepare_std_handle(STD_INPUT_HANDLE,iflags);
     return 0;
@@ -67,7 +67,7 @@ int write_styled_text(const wchar_t* text, STYLE s) {
     return write_styled_and_coloured_text(text,default_console_colour(),s);
 }
 
-int move_cursor(ConsoleDirection d, unsigned int length) {
+int move_cursor(ConsoleDirection d, uint32_t length) {
     char dir = '\0';
     switch (d)
     {
@@ -104,10 +104,10 @@ int set_cursor_position(ConsolePoint p) {
 void hide_cursor() {
     wprintf(L"\x1b[?25l");
 }
-void scroll_up(u8 n) {
+void scroll_up(uint8_t n) {
     wprintf(L"\x1b[%dS",n);
 }
-void scroll_down(u8 n) {
+void scroll_down(uint8_t n) {
     wprintf(L"\x1b[%dT",n);
 }
 void clear_screen() {

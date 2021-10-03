@@ -1,14 +1,12 @@
 #include <stddef.h>
 #include <windows.h>
+#include <stdint.h>
 #ifndef CONSOLE_LIB 
 #define CONSOLE_LIB
-typedef unsigned char u8;
-typedef unsigned long u64;
-typedef signed long i64;
-typedef signed char i8;
-typedef unsigned short u16;
 
-#define EVENT_LIST_BUFFER_SIZE 20
+#ifndef EVENT_LIST_BUFFER_SIZE
+    #define EVENT_LIST_BUFFER_SIZE 20
+#endif
 typedef struct {
     INPUT_RECORD inputRecord[EVENT_LIST_BUFFER_SIZE];
     int length;
@@ -21,8 +19,8 @@ typedef enum {
 
 }STYLE;
 typedef struct {
-    i64 x;
-    i64 y;
+    int64_t x;
+    int64_t y;
 } ConsolePoint;
 typedef enum {
     UP,
@@ -54,21 +52,21 @@ typedef struct  {
     ConsoleColourBasic bg;
 } ConsoleColour;
 ConsoleColour default_console_colour();
-int prepare_console(unsigned short output_flags, unsigned short input_flags);
+int prepare_console(uint32_t output_flags, uint32_t input_flags);
 int write_styled_and_coloured_text(const wchar_t * text, ConsoleColour colour, STYLE s);
 int write_coloured_text(const wchar_t* text, ConsoleColour col);
 int write_styled_text(const wchar_t* text, STYLE s);
 EventList get_event_list();
-int move_cursor(ConsoleDirection d, unsigned int length);
+int move_cursor(ConsoleDirection d, uint32_t length);
 
 int set_cursor_position(ConsolePoint p); // 0 means no error
 void hide_cursor();
 void save_cursor_position();
 void restore_cursor_last_saved_position();
-void scroll_up(u8 n);
+void scroll_up(uint8_t n);
 void clear_screen();
 void set_window_title(const wchar_t* title);
-void scroll_down(u8 n);
+void scroll_down(uint8_t n);
 void write_text(const wchar_t* t);
 void revert_console_attributes();
 #endif // CONSOLE_LIB

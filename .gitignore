@@ -4,6 +4,4 @@
 *.txt
 *.mp4
 x64/
-*.sln
-*.vcxproj*
 .vs/
